@@ -1,0 +1,85 @@
+#+TITLE: linux-saver
+A bootable NixOS rescue image with AI agents on board: =opencode= for
+debugging systems, =arch-expert= for typed troubleshooting playbooks, and an
+ssh server so you can rescue a box without touching a keyboard.
+
+The live system runs entirely from RAM (tmpfs); everything you care about
+survives on a second USB partition.
+
+* What's on the stick
+
+- NixOS live image (tmpfs runtime, squashfs store, zstd)
+- =opencode= (coding/rescue agent), with its config and memory on the data
+  partition
+- [[https://github.com/lost-rob0t/arch-expert][arch-expert]] — Prolog expert system you program over time with the
+  failures you actually hit; its user knowledge base persists on the data
+  partition
+- sshd enabled by default (keys-only unless you build with a root password)
+- NetworkManager (=nmcli=), standard rescue tools (gptfdisk, testdisk,
+  smartmontools, ntfs3g, efibootmgr, nixos-enter, ...)
+
+It boots and repairs any Linux host — Arch, NixOS, Debian, Fedora, anything
+mountable — not just NixOS machines.
+
+* Build
+
+#+begin_example
+./build.sh          # nix build .#iso -> out/result/iso/linux-saver-*.iso
+#+end_example
+
+Requires Nix with flakes. The flake pulls arch-expert from the sibling
+checkout =../arch-expert=; adjust the input if you move the repos apart.
+
+* Write to USB
+
+#+begin_example
+sudo ./install-usb.sh /dev/sdX        # persistent layout (UEFI)
+sudo ./install-usb.sh --dd /dev/sdX   # raw dd; BIOS+UEFI, no persistence
+#+end_example
+
+Persistent layout (GPT):
+
+| partition | fs    | label      | contents                                    |
+|-----------+-------+------------+---------------------------------------------|
+| p1        | FAT32 | =SAVER=    | extracted ISO: kernel, initrd, squashfs, EFI |
+| p2        | ext4  | =SAVER_DATA= | opencode config, arch-expert kb, ssh keys, artifacts |
+
+=install-usb.sh= seeds p2 from =~/.config/opencode= and
+=../arch-expert/kb= when they exist (override with the second argument).
+
+* First boot
+
+1. Console autologin is root; or ssh in (=root@<ip>=, keys-only by default).
+2. =saver-init.service= mounts SAVER_DATA at =/data= and wires:
+   - =~/.config/opencode= -> =/data/config/opencode= (agent memory persists)
+   - =ARCH_EXPERT_KB= -> =/data/arch-expert/kb=
+   - =/data/ssh/authorized_keys= -> =~/.ssh/authorized_keys=
+   - =/root/AGENTS.md= -> the agent rescue playbook
+3. Rescue. Agents get a full briefing from =/root/AGENTS.md=.
+
+** ssh access
+
+- Drop your pubkey at =/data/ssh/authorized_keys= on the stick (from any
+  machine it already mounts on) for headless login.
+- Host keys regenerate each boot unless you pin them in =/data/ssh/host_keys=
+  → expect =REMOTE HOST IDENTIFICATION HAS CHANGED=; use
+  =-o UserKnownHostsFile=/dev/null= or pin the keys.
+- For password ssh instead: create =secrets/root-password-hash= (output of
+  =mkpasswd -m sha-512=, gitignored) before =./build.sh=.
+
+* Repository layout
+
+| file            | role                                                    |
+|-----------------+---------------------------------------------------------|
+| =flake.nix=     | image entrypoint; wires arch-expert + root password hook |
+| =saver.nix=     | the NixOS module (packages, sshd, saver-init, profile)   |
+| =agents.md=     | the AGENTS.md agents see on the live system              |
+| =build.sh=      | builds the ISO                                           |
+| =install-usb.sh=| writes the persistent (or raw) USB stick                 |
+
+* Notes
+
+- The persistent p1 uses FAT32 with dereferenced symlinks; UEFI boot only.
+  Use =--dd= for legacy BIOS machines.
+- =arch-expert add= on the live system records new playbooks straight to
+  the data partition — the stick gets smarter with every incident.

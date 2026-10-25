@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "arch-expert": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792919574,
+        "narHash": "sha256-r+TJ9zCnz+glBLty51zhVvemPztQZl/oM4zu6D3lfh8=",
+        "owner": "lost-rob0t",
+        "repo": "arch-expert",
+        "rev": "72b81771cbc789a1f43ac9e1d1af85b6b9a276d3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "lost-rob0t",
+        "repo": "arch-expert",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1792773339,
+        "narHash": "sha256-rZLrzrC6i+jnTAlvPZHogKDulY7WWDEv9hJeHieO7Zw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "arch-expert": "arch-expert",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
